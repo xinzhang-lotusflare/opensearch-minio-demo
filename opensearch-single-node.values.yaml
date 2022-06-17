@@ -1,0 +1,137 @@
+global:
+  localEnv: true
+  dockerRegistry: localhost:32000
+image:
+  repository: test-os
+  tag: "0.4"
+persistence:
+  image: busybox
+  imageTag: "latest"
+# tolerations:
+#   - effect: NoSchedule
+#     key: node-role.kubernetes.io/infralayer
+# nodeSelector:
+#   group-name: worker-group-infra
+persistence:
+  enabled: true
+  enableInitChown: true
+#   storageClass: ""
+#   size: 1Gi
+clusterName: "lf-opensearch-dc06-cluster"
+nodeGroup: "master"
+# roles:
+# - master
+opensearchJavaOpts: "-Xmx512M -Xms512M"
+replicas: 1
+securityContext:
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  privileged: false
+resources:
+  requests:
+    cpu: "300m"
+    memory: "1024Mi"
+  limits:
+    cpu: "2000m"
+    memory: "2048Mi"
+secretMounts:
+  ## The path should be under the config folder
+  - name: rest-tls-truststore
+    secretName: lf-opensearch-certs-rest-tls
+    path: /usr/share/opensearch/config/rest-truststore.p12
+    subPath: truststore.p12
+  - name: rest-tls-keystore
+    secretName: lf-opensearch-certs-rest-tls
+    path: /usr/share/opensearch/config/rest-keystore.p12
+    subPath: keystore.p12
+  - name: transport-tls-truststore
+    secretName: lf-opensearch-certs-transport-tls
+    path: /usr/share/opensearch/config/transport-truststore.p12
+    subPath: truststore.p12
+  - name: transport-tls-keystore
+    secretName: lf-opensearch-certs-transport-tls
+    path: /usr/share/opensearch/config/transport-keystore.p12
+    subPath: keystore.p12
+extraEnvs:
+  - name: discovery.type
+    value: single-node
+  - name: s3.client.default.endpoint
+    value: s3-minio:9000
+  - name: s3.client.default.protocol
+    value: http
+  - name: s3.client.default.path_style_access
+    value: "true"
+  - name: "plugins.security.ssl.transport.keystore_password"
+    valueFrom:
+      secretKeyRef:
+        name: lf-opensearch-credentials
+        key: OPENSEARCH_KEYSTORE_PASSWORD
+  - name: "plugins.security.ssl.transport.truststore_password"
+    valueFrom:
+      secretKeyRef:
+        name: lf-opensearch-credentials
+        key: OPENSEARCH_KEYSTORE_PASSWORD
+  - name: "plugins.security.ssl.http.keystore_password"
+    valueFrom:
+      secretKeyRef:
+        name: lf-opensearch-credentials
+        key: OPENSEARCH_KEYSTORE_PASSWORD
+  - name: "plugins.security.ssl.http.truststore_password"
+    valueFrom:
+      secretKeyRef:
+        name: lf-opensearch-credentials
+        key: OPENSEARCH_KEYSTORE_PASSWORD
+config:
+  opensearch.yml: |
+    plugins:
+      security:
+        ssl:
+          transport:
+            keystore_type: pkcs12
+            keystore_filepath: transport-keystore.p12
+            truststore_type: pkcs12
+            truststore_filepath: transport-truststore.p12
+            enforce_hostname_verification: false
+          http:
+            enabled: true
+            keystore_type: pkcs12
+            keystore_filepath: rest-keystore.p12
+            truststore_type: pkcs12
+            truststore_filepath: rest-truststore.p12
+        allow_unsafe_democertificates: true
+        allow_default_init_securityindex: true
+        authcz:
+          admin_dn:
+            - CN=lf-os-certs-admin,OU=OS node,O=Lotusflare,L=OS,ST=OS,C=US
+        nodes_dn:
+          - CN=lf-os-certs-node-*,OU=OS node,O=Lotusflare,L=OS,ST=OS,C=US
+        audit.type: internal_opensearch
+        enable_snapshot_restore_privilege: true
+        check_snapshot_restore_write_privileges: true
+        restapi:
+          roles_enabled: ["all_access", "security_rest_api_access"]
+        system_indices:
+          enabled: true
+          indices:
+            [
+              ".opendistro-alerting-config",
+              ".opendistro-alerting-alert*",
+              ".opendistro-anomaly-results*",
+              ".opendistro-anomaly-detector*",
+              ".opendistro-anomaly-checkpoints",
+              ".opendistro-anomaly-detection-state",
+              ".opendistro-reports-*",
+              ".opendistro-notifications-*",
+              ".opendistro-notebooks",
+              ".opendistro-asynchronous-search-response*",
+            ]
+    ######## End OpenSearch Security Configuration ########
+
+keystore:
+  - secretName: lf-opensearch-s3-credentials
+    items:
+    - key: access_key
+      path: s3.client.default.access_key
+    - key: secret_key
+      path: s3.client.default.secret_key
+

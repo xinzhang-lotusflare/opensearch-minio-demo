@@ -1,0 +1,29 @@
+image:
+  repository: quay.io/minio/minio
+  tag: RELEASE.2022-05-08T23-50-31Z
+  pullPolicy: IfNotPresent
+mcImage:
+  repository: quay.io/minio/mc
+  tag: RELEASE.2022-05-09T04-08-26Z
+  pullPolicy: IfNotPresent
+mode: standalone
+replicas: 1
+rootUser: "admin"
+rootPassword: "admin123"
+persistence:
+  size: 1Gi
+resources:
+  requests:
+    memory: 512Mi
+users:
+  ## Username, password and policy to be assigned to the user
+  ## Default policies are [readonly|readwrite|writeonly|consoleAdmin|diagnostics]
+  ## Add new policies as explained here https://docs.min.io/docs/minio-multi-user-quickstart-guide.html
+  ## NOTE: this will fail if LDAP is enabled in your MinIO deployment
+  ## make sure to disable this if you are using LDAP.
+  - accessKey: admin
+    secretKey: admin123
+    policy: consoleAdmin
+  - accessKey: miniocli
+    secretKey: miniocli
+    policy: readwrite
